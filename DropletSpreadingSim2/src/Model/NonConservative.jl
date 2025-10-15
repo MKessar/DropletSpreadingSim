@@ -1,10 +1,12 @@
 module NonConservative
 export update_cap!
-using StaticArrays, UnPack, FLoops
-using FoldsCUDA, CUDA
+using StaticArrays, UnPack
+# using FLoops
+# using FoldsCUDA, CUDA
 using ..Ops
 using ..Grids
 using ..Model: MODE, nᵤ
+using Base.Threads
 
 function unpack_hu!(hux, huy, Uvec, n₁, n₂, i, j)
     hux[i, j] = Uvec[gridded_to_flat(2, i, j; nᵤ, n₁, n₂)]
@@ -12,8 +14,8 @@ function unpack_hu!(hux, huy, Uvec, n₁, n₂, i, j)
     return
 end
 
-function unpack_hu!(hux, huy, Uvec, n₁, n₂; executor=ThreadedEx())
-    @floop executor for I in CartesianIndices((n₁, n₂))
+function unpack_hu!(hux, huy, Uvec, n₁, n₂)
+    @threads for I in CartesianIndices((n₁, n₂))
         unpack_hu!(hux, huy, Uvec, n₁, n₂, Tuple(I)...)
     end
     return hux, huy
@@ -70,9 +72,9 @@ function compute_skew_cap_coeffs!(
     fxx, fxy, fyy, gx, gy, gv, fvx, fvy, Pid,
     h, vx, vy, κ, θₐ, θᵣ, hₛ,
     hux, huy, ux, uy, τx, τy,
-    Δx, Δy, n₁, n₂; executor=ThreadedEx()
+    Δx, Δy, n₁, n₂
 )
-    @floop executor for I in CartesianIndices(h)
+    @threads for I in CartesianIndices(h)
         i, j = Tuple(I)
         compute_skew_cap_coeffs!(
             fxx, fxy, fyy, gx, gy, gv, fvx, fvy, Pid,
@@ -126,9 +128,9 @@ function skew_cap_kernel!(
     dU, h, ux, uy, vx, vy, ϕxx, ϕxy, ϕyy,
     gx, gy, fxx, fxy, fyy, gv, fvx, fvy, Pid,
     Re, β, τx, τy,
-    Δx, Δy, n₁, n₂; executor=ThreadedEx(),
+    Δx, Δy, n₁, n₂
 )
-    @floop executor for I in CartesianIndices(h)
+    @threads for I in CartesianIndices(h)
         i, j = Tuple(I)
         skew_cap_kernel!(
             dU, h, ux, uy, vx, vy, ϕxx, ϕxy, ϕyy,
@@ -139,34 +141,32 @@ function skew_cap_kernel!(
     end
 end
 
-function update_cap!(dUvec, Uvec, p, t; gridinfo, caches, executor=:auto)
+function update_cap!(dUvec, Uvec, p, t; gridinfo, caches)
     typed_caches = caches[typeof(Uvec)]
     cache_cap = typed_caches.cap
     @unpack h, hux, huy, ux, uy, vx, vy, ϕxx, ϕxy, ϕyy = cache_cap
     @unpack fxx, fxy, fyy, gv, fvx, fvy, gx, gy, Pid = cache_cap
     @unpack Δx, Δy, n₁, n₂ = gridinfo
     @unpack κ, Re, β, τx, τy, θₐ, θᵣ, hₛ = p
-
+#=
     if executor == :auto
         executor = Uvec isa CuArray ? CUDAEx() : ThreadedEx()
-    end
+    end=#
 
-    unpack_Uvec!(h, ux, uy, vx, vy, ϕxx, ϕxy, ϕyy, Uvec, n₁, n₂; executor)
-    unpack_hu!(hux, huy, Uvec, n₁, n₂; executor)
+    unpack_Uvec!(h, ux, uy, vx, vy, ϕxx, ϕxy, ϕyy, Uvec, n₁, n₂)
+    unpack_hu!(hux, huy, Uvec, n₁, n₂)
 
     compute_skew_cap_coeffs!(
         fxx, fxy, fyy, gx, gy, gv, fvx, fvy, Pid, h,
         vx, vy, κ, θₐ, θᵣ, hₛ, hux, huy, ux, uy, τx, τy,
-        Δx, Δy, n₁, n₂;
-        executor
+        Δx, Δy, n₁, n₂
     )
 
     skew_cap_kernel!(
         dUvec, h, ux, uy, vx, vy, ϕxx, ϕxy, ϕyy,
         gx, gy, fxx, fxy, fyy, gv, fvx, fvy, Pid,
         Re, β, τx, τy,
-        Δx, Δy, n₁, n₂;
-        executor
+        Δx, Δy, n₁, n₂
     )
 
     return dUvec

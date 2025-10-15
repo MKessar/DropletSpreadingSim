@@ -8,15 +8,16 @@ export DropletSpreadingExperiment,
     build_viz_cb
 
 using UnPack, NCDatasets, DiffEqCallbacks, Printf, StaticArrays, DiffEqBase
-using CUDA, FoldsCUDA
+# using CUDA, FoldsCUDA
 using Distributions, LinearAlgebra, DataStructures
 using SparsityTracing, SparseDiffTools, SparseArrays
-using FLoops
+# using FLoops
 using ImageFiltering
 using Base.Filesystem: dirname, mkpath
-using Makie
+# using Makie
 import DiffEqBase: ODEProblem
 import Base: show
+using Base.Threads
 
 using ..Model
 using ..Model: nᵤ
@@ -131,25 +132,22 @@ end
 function build_reprojection_callback(
     exp::DropletSpreadingExperiment;
     thresh=nothing,
-    executor=:auto,
     kwargs...
 )
     reproj_cb = FunctionCallingCallback(; kwargs...) do Uvec, _, integrator
-        if executor == :auto
-            executor = Uvec isa CuArray ? CUDAEx() : ThreadedEx()
-        end
+
         @unpack n₁, n₂, Δx, Δy = exp.grid
         @unpack h, ux, uy, vx, vy, ϕxx, ϕxy, ϕyy = exp.caches[typeof(Uvec)].cap
         vx_new = copy(vx)
         vy_new = copy(vy)
         @unpack κ = exp.p
-        unpack_Uvec!(h, ux, uy, vx, vy, ϕxx, ϕxy, ϕyy, Uvec, n₁, n₂; executor)
-        compute_v!(vx_new, vy_new, h, κ, Δx, Δy, n₁, n₂; executor)
+        unpack_Uvec!(h, ux, uy, vx, vy, ϕxx, ϕxy, ϕyy, Uvec, n₁, n₂)
+        compute_v!(vx_new, vy_new, h, κ, Δx, Δy, n₁, n₂)
         if isnothing(thresh) || (
             (norm(vx - vx_new) / norm(vx) > thresh) ||
             (norm(vy - vy_new) / norm(vy) > thresh)
         )
-            pack_Uvec!(integrator.u, h, ux, uy, vx_new, vy_new, ϕxx, ϕxy, ϕyy, n₁, n₂; executor)
+            pack_Uvec!(integrator.u, h, ux, uy, vx_new, vy_new, ϕxx, ϕxy, ϕyy, n₁, n₂)
             return
         end
     end
@@ -164,15 +162,15 @@ function build_cfl_limiter(exp::DropletSpreadingExperiment; kwargs...)
         @unpack U = exp.caches[typeof(Uvec_raw)].hyp
         matricize_Uvec!(U, Uvec_raw, n₁, n₂)
         dtmax = 0.0
-        @floop ThreadedEx() for I in CartesianIndices((n₁, n₂))
+        for I in CartesianIndices((n₁, n₂))
             i, j = Tuple(I)
             visc_vel = U[i, j, 2] / U[i, j, 1] + √(3U[i, j, 1]) * √(max(U[i, j, 6], 0))
             dt = Δx / visc_vel
-            @reduce() do (dtmax = 0; dt)
+#             do (dtmax = 0; dt)
                 if isless(dtmax, dt)
                     dtmax = dt
                 end
-            end
+#             end
         end
         return dtmax
     end
@@ -285,7 +283,6 @@ function DropletSpreadingExperiment(
     if isnothing(hₛ)
         hₛ = hₛ_ratio / 2 * δ
     end
-
     if isnothing(mass)
         mass = holdup * L^2 * aspect_ratio
     end
@@ -311,6 +308,9 @@ function DropletSpreadingExperiment(
 
     n₁, n₂ = length.([x, y])
     Δx = Δy = δ
+@show(N)
+@show(n₁)
+@show(n₂)
 
     p = (Re=Re, κ=κ, β=β, τx=τx, τy=τy, hₛ=hₛ, θₐ=θₐ, θᵣ=θᵣ)
 
@@ -365,14 +365,14 @@ function ODEProblem(f::DropletSpreadingExperiment, tspan, args...; on=:cpu, comp
         Jad = SparsityTracing.jacobian(du_ad, length(du_ad))
         colors = matrix_colors(Jad)
     end
-    if on == :gpu
-        U₀ = cu(f.U₀)
-        p = NamedTuple((key => Float32(value) for (key, value) in pairs(f.p)))
-        if compute_sparsity
-            Jad = cu(Jad)
-            colors = cu(colors)
-        end
-    end
+#     if on == :gpu
+#         U₀ = cu(f.U₀)
+#         p = NamedTuple((key => Float32(value) for (key, value) in pairs(f.p)))
+#         if compute_sparsity
+#             Jad = cu(Jad)
+#             colors = cu(colors)
+#         end
+#     end
     if compute_sparsity
         cap_func = ODEFunction(f.cap!, jac_prototype=Jad, colorvec=colors, sparsity=Jad)
     else

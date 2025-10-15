@@ -1,11 +1,13 @@
 module Hyperbolic
 export update_hyp!
 
-using UnPack, FLoops
-using FoldsCUDA, CUDA
+using UnPack
+# using FLoops
+# using FoldsCUDA, CUDA
 using ..Helpers
 using ..Grids
 using ..Model: MODE, nᵤ
+using Base.Threads
 
 @inline minmod(x, y) = 0.5 * (sign(x) + sign(y)) * min(abs(x), abs(y))
 
@@ -80,7 +82,7 @@ end
     return
 end
 
-function update_hyp_x!(dUvec, U, p, t; gridinfo, cache_hyp, executor=ThreadedEx())
+function update_hyp_x!(dUvec, U, p, t; gridinfo, cache_hyp)
     @unpack Fx = cache_hyp
     @unpack Ue₋, Ue₊, Uw₋, Uw₊ = cache_hyp
     @unpack ce₋, ce₊, cw₋, cw₊ = cache_hyp
@@ -89,12 +91,12 @@ function update_hyp_x!(dUvec, U, p, t; gridinfo, cache_hyp, executor=ThreadedEx(
     @unpack fe, fw = cache_hyp
     @unpack Δx, Δy, n₁, n₂ = gridinfo
 
-    @floop executor for I in CartesianIndices((n₁, n₂, nᵤ))
+    @threads for I in CartesianIndices((n₁, n₂, nᵤ))
         i, j, k = Tuple(I)
         update_bounds_x!(Uw₋, Uw₊, Ue₋, Ue₊, U, n₁, n₂, Δx, Δy, i, j, k)
     end
 
-    @floop executor for I in CartesianIndices((n₁, n₂))
+    @threads for I in CartesianIndices((n₁, n₂))
         i, j = Tuple(I)
         compute_caF_x!(cw₋, aw₋, Fw₋, Uw₋, i, j)
         compute_caF_x!(cw₊, aw₊, Fw₊, Uw₊, i, j)
@@ -110,7 +112,7 @@ function update_hyp_x!(dUvec, U, p, t; gridinfo, cache_hyp, executor=ThreadedEx(
     return dUvec
 end
 
-function update_hyp_y!(dUvec, U, p, t; gridinfo, cache_hyp, executor=ThreadedEx())
+function update_hyp_y!(dUvec, U, p, t; gridinfo, cache_hyp)
     @unpack Fy = cache_hyp
     @unpack Un₋, Un₊, Us₋, Us₊ = cache_hyp
     @unpack cn₋, cn₊, cs₋, cs₊ = cache_hyp
@@ -119,12 +121,12 @@ function update_hyp_y!(dUvec, U, p, t; gridinfo, cache_hyp, executor=ThreadedEx(
     @unpack fn, fs = cache_hyp
     @unpack Δx, Δy, n₁, n₂ = gridinfo
 
-    @floop executor for I in CartesianIndices((n₁, n₂, nᵤ))
+    @threads for I in CartesianIndices((n₁, n₂, nᵤ))
         i, j, k = Tuple(I)
         update_bounds_y!(Us₋, Us₊, Un₋, Un₊, U, n₁, n₂, Δx, Δy, i, j, k)
     end
 
-    @floop executor for I in CartesianIndices((n₁, n₂))
+    @threads for I in CartesianIndices((n₁, n₂))
         i, j = Tuple(I)
         compute_caF_y!(cs₋, as₋, Fs₋, Us₋, i, j)
         compute_caF_y!(cs₊, as₊, Fs₊, Us₊, i, j)
@@ -140,19 +142,19 @@ function update_hyp_y!(dUvec, U, p, t; gridinfo, cache_hyp, executor=ThreadedEx(
     return dUvec
 end
 
-function update_hyp!(dUvec, Uvec, p, t; gridinfo, caches, executor=:auto)
+function update_hyp!(dUvec, Uvec, p, t; gridinfo, caches)
     typed_caches = caches[typeof(Uvec)]
-    if executor == :auto
-        executor = Uvec isa CuArray ? CUDAEx() : ThreadedEx()
-    end
+#     if executor == :auto
+#         executor = Uvec isa CuArray ? CUDAEx() : ThreadedEx()
+#     end
     cache_hyp = typed_caches.hyp
     @unpack dUhypx, dUhypy, U = cache_hyp
     @unpack Δx, Δy, n₁, n₂ = gridinfo
 
-    matricize_Uvec!(U, Uvec, n₁, n₂; executor)
+    matricize_Uvec!(U, Uvec, n₁, n₂)
 
-    update_hyp_x!(dUhypx, U, p, t; gridinfo, cache_hyp, executor)
-    update_hyp_y!(dUhypy, U, p, t; gridinfo, cache_hyp, executor)
+    update_hyp_x!(dUhypx, U, p, t; gridinfo, cache_hyp)
+    update_hyp_y!(dUhypy, U, p, t; gridinfo, cache_hyp)
     @. dUvec = dUhypx + dUhypy
 end
 

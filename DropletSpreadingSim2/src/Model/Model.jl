@@ -1,7 +1,9 @@
 module Model
 export update_cap!, update_hyp!, compute_v!, compute_ϕ!, build_cache, build_cache_cap, build_cache_hyp, MODE, nᵤ
-using SparseArrays, StaticArrays, LinearAlgebra, UnPack, Reexport, FLoops
+using SparseArrays, StaticArrays, LinearAlgebra, UnPack, Reexport
+# using FLoops
 using UnPack
+using Base.Threads
 
 const nᵤ = 8
 const MODE = :full
@@ -39,8 +41,8 @@ else
     end
 end
 
-function compute_v!(vx, vy, h, κ, Δx, Δy, n₁, n₂; executor=ThreadedEx())
-    @floop executor for I in CartesianIndices((n₁, n₂))
+function compute_v!(vx, vy, h, κ, Δx, Δy, n₁, n₂)
+    @threads for I in CartesianIndices((n₁, n₂))
         compute_v!(vx, vy, h, κ, Δx, Δy, n₁, n₂, Tuple(I)...)
     end
 end
@@ -56,8 +58,8 @@ function compute_ϕ!(h, ux, uy, ϕxx, ϕxy, ϕyy, τx, τy, i, j)
     return
 end
 
-function compute_ϕ!(h, ux, uy, ϕxx, ϕxy, ϕyy, τx, τy; executor=ThreadedEx())
-    @floop executor for I in CartesianIndices(h)
+function compute_ϕ!(h, ux, uy, ϕxx, ϕxy, ϕyy, τx, τy)
+    @threads for I in CartesianIndices(h)
         compute_ϕ!(h, ux, uy, ϕxx, ϕxy, ϕyy, τx, τy, Tuple(I)...)
     end
 end
