@@ -1,16 +1,16 @@
 # %%
 using DropletSpreadingSim2
 
-using DifferentialEquations, Sundials, Logging, DrWatson
-# using WGLMakie
+using DifferentialEquations, Logging, DrWatson
+#using WGLMakie
 using TerminalLoggers: TerminalLogger
 global_logger(TerminalLogger())
 
 # %%
 p = Dict(
-    :tmax => 0.00000010,
+    :tmax => 1000,
     :hₛ_ratio => 1.0,
-    :hₛ => 2e-5,
+    :hₛ => 2e-2,
     :ndrops => 1,
     :hdrop_std => 0.2,
     :h₀ => 0.0001,
@@ -81,6 +81,6 @@ save_cb = build_save_callback(
     progress_steps=1,
     save_everystep=false,
     saveat=get(p, :keep_timestep, []),
-    adaptive=false,
-    dt=0.000000001,
-)      
+)
+# %%
+
