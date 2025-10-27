@@ -38,7 +38,7 @@ function do_simulate(p; filename)
         progress_steps=1,
         save_everystep=false,
         saveat=get(p, :keep_timestep, []),
-        dt=1e-3,
+        dt=0.05,
     )
 
     return sol, experiment
@@ -46,8 +46,7 @@ end
 
 # %%
 parameters = Dict(
-    :mass => 220,
-    :tmax => 1000,
+    :tmax => 100,
     :hₛ_ratio => 1.0,
     :hₛ => 1e-2,
     :ndrops => 1,
@@ -62,7 +61,7 @@ parameters = Dict(
     :mass => 220,
     :aspect_ratio => 1,
     :ρ => 1000.0,
-    :τ => [1.0, 2.0, 5.0, 5e-1, 2e-1, 1e-1],
+    :τ => [1.0, 2.0, 5.0],
     :L => 20,
     :two_dim => false,
     :cfl_safety_factor => 0.9,

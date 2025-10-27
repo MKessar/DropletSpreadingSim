@@ -37,6 +37,13 @@ function vdrop(Rθ, θ)
     return vdrop
 end
 
+function vdropbis(Rθ, θ)
+    R = Rθ / sin(θ)
+#    h = R * (1 - cos(θ))
+    vdrop = 0.5*(R)^2*(2*θ -sin(2*θ)) 
+    return vdrop
+end
+
 struct DropletSpreadingExperiment
     U₀::Vector{Float64}
     p::NamedTuple
@@ -337,9 +344,10 @@ function DropletSpreadingExperiment(
     d_R = Normal(1.0, hdrop_std)
     R = rand(d_R, ndrops)
 #     voldrop = vdrop.(R, θₛ)
-    voldrop = vdrop.(R, θi)
+    voldrop = vdropbis.(R, θi)
     vol = sum(voldrop)
-    R = R * (abs(mass) / vol)^(1 / 3)
+
+    R = R * (ρ)^(1 / 3)
     Rmoy = mean(R)
  @show(θi)
  @show(θₛ)
