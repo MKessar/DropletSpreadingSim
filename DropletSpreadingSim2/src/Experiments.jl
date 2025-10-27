@@ -26,6 +26,10 @@ drop(R₀, θ, r) = @. max(sqrt(max(R₀^2 / sin(θ)^2 - r^2, 0)) - R₀ / tan(�
 drop(R₀, x₀, y₀, θ, x, y) = (r = @.(√((x - x₀)^2 + (y - y₀)'^2));
 drop(R₀, θ, r))
 
+dropbis(R₀, θ, r) = @. max(sqrt(max(5.0^2 / sin(θ)^2 - r^2, 0)) - 5.0 / tan(θ), 0)
+dropbis(R₀, x₀, y₀, θ, x, y) = (r = @.(√((x - x₀)^2 + (y - y₀)'^2));
+dropbis(R₀, θ, r))
+
 function vdrop(Rθ, θ)
     R = Rθ / sin(θ)
     h = R * (1 - cos(θ))
@@ -220,8 +224,8 @@ function init_model(x, y, h, p)
 
     @unpack κ, τx, τy = p
 
-    ux = @. h * τx / 2
-    uy = @. h * τy / 2
+    ux = 0.0*@. h * τx / 2
+    uy = 0.0*@. h * τy / 2
     vx = zeros(n₁, n₂)
     vy = zeros(n₁, n₂)
     ϕxx = zeros(n₁, n₂)
@@ -290,10 +294,18 @@ function DropletSpreadingExperiment(
     u₀ = h₀ * τ / μ
     ν = μ / ρ
 
-    Re = u₀ * h₀ / ν
+#    Re = u₀ * h₀ / ν
     κ = σ / (ρ * h₀ * u₀^2)
-    β = (3π)^2 / 4
-
+    Re = 1.0/ κ # = 1 / Re
+    
+    β = 10000.0 #(3π)^2 / 4
+    @show(τ)
+    @show(Re)
+    @show(β)
+    @show(u₀)
+    @show(ν)
+    @show(κ)
+    @show(h₀)    
     # echelle de vitesse sur  τ donc norme de (τx, τy) = 1
     τx = cos(θτ)
     τy = sin(θτ)
@@ -319,14 +331,20 @@ function DropletSpreadingExperiment(
     end
     # random distribution of drops with a total mass equal to mass
     θₛ = 0.5 * (θₐ + θᵣ)
+    θi = 2.0 * θₛ
     xmin, xmax = extrema(x)
     ymin, ymax = extrema(y)
     d_R = Normal(1.0, hdrop_std)
     R = rand(d_R, ndrops)
-    voldrop = vdrop.(R, θₛ)
+#     voldrop = vdrop.(R, θₛ)
+    voldrop = vdrop.(R, θi)
     vol = sum(voldrop)
     R = R * (abs(mass) / vol)^(1 / 3)
     Rmoy = mean(R)
+ @show(θi)
+ @show(θₛ)
+ @show(n₁)
+ @show(n₂)    
     # drops must be deposited within the numerical domain
     # withdraw mass if mass is negative (2*mass)
     if mass < 0
@@ -336,7 +354,9 @@ function DropletSpreadingExperiment(
     end
 
     if ndrops == 1
-        h = sum(drop.(R, 0, 0, θₛ, Ref(x), Ref(y))) .+ hi .+ hw
+#         h = sum(drop.(R, 0, 0, θₛ, Ref(x), Ref(y))) .+ hi .+ hw
+        h = sum(dropbis.(R, 0, 0, θi, Ref(x), Ref(y))) .+ hi .+ hw
+
     else
         d_posx = Uniform(xmin + Rmoy, xmax - Rmoy)
         if two_dim

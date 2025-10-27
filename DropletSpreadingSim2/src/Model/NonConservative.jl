@@ -101,14 +101,15 @@ function skew_cap_kernel!(
     v = @SVector [vx[i, j], vy[i, j]]
     τ = @SVector [τx, τy]
 
-    dhu = -(@∇(gv)) + (@divh∇(fvx, fvy)) + 3 / Re * (τ / 2 - u / h[i, j]) + h[i, j] * (@∇(Pid))
+#     dhu = -(@∇(gv)) + (@divh∇(fvx, fvy)) + 3 / Re * (τ / 2 - u / h[i, j]) + h[i, j] * (@∇(Pid))
+    dhu = -(@∇(gv)) + (@divh∇(fvx, fvy)) - 1.0 / Re * ( u*h[i, j] ) + h[i, j] * (@∇(Pid))
     dhv = @SVector [vx[i, j], vy[i, j]]
     dhv = -g * (@div(ux, uy)) - f * (@divh∇(ux, uy))
     dhϕ = (
         2h[i, j] * (@div(ux, uy)) * ϕ - (@∇(ux, uy)) * h[i, j] * ϕ - h[i, j] * ϕ * (@∇(ux, uy))'
         -
         β / Re / h[i, j] * (
-            ϕ - (u ⊗ u) / (3h[i, j]^2) + 1 / (12h[i, j]^2) * ((u ⊗ u) - h[i, j]^2 / 4 * (τ ⊗ τ))
+            ϕ # - (u ⊗ u) / (3h[i, j]^2) + 1 / (12h[i, j]^2) * ((u ⊗ u) - h[i, j]^2 / 4 * (τ ⊗ τ))
         )
     )
 
