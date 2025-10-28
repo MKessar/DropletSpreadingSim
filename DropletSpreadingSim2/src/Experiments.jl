@@ -26,9 +26,9 @@ drop(R₀, θ, r) = @. max(sqrt(max(R₀^2 / sin(θ)^2 - r^2, 0)) - R₀ / tan(�
 drop(R₀, x₀, y₀, θ, x, y) = (r = @.(√((x - x₀)^2 + (y - y₀)'^2));
 drop(R₀, θ, r))
 
-dropbis(Rs, θ, r) = @. max(sqrt(max(Rs^2 / sin(θ)^2 - r^2, 0)) - Rs / tan(θ), 0)
-dropbis(Rs, x₀, y₀, θ, x, y) = (r = @.(√((x - x₀)^2 + (y - y₀)'^2));
-dropbis(Rs, θ, r))
+dropbis(R,Rs, θ, r) = @. max(sqrt(max(Rs^2 / sin(θ)^2 - r^2, 0)) - Rs / tan(θ), 0)
+dropbis(R,Rs, x₀, y₀, θ, x, y) = (r = @.(√((x - x₀)^2 + (y - y₀)'^2));
+dropbis(R,Rs, θ, r))
 #This is the formulation form Nicollas celier's parpaer (JMF 2023)
 function vdrop(Rθ, θ)
     R = Rθ / sin(θ)
@@ -279,7 +279,7 @@ function DropletSpreadingExperiment(
     smooth=false,
     θₛ=0.0,
     θi=0.0,
-    Rs=5.0
+    Rs=1.0
 )
     if L < 2h₀
         error("Domain length < 2h₀")
@@ -339,35 +339,29 @@ function DropletSpreadingExperiment(
     if isempty(hi)
         hi = hₛ
     end
-    # random distribution of drops with a total mass equal to mass
-#     θₛ = 0.5 * (θₐ + θᵣ)
-#     θi = 2.0 * θₛ
+    # random distribution of drops
     xmin, xmax = extrema(x)
     ymin, ymax = extrema(y)
-#     d_R = Normal(1.0, hdrop_std)
-#     R = rand(d_R, ndrops)
-#     voldrop = vdrop.(R, θₛ)
-#     voldrop = vdropbis.(R, θi)
-#     vol = sum(voldrop)
+    d_R = Normal(1.0, hdrop_std)
+    R = rand(d_R, ndrops)
 
-#     R = R * (ρ)^(1 / 3)
-#     Rmoy = mean(R)
+    Rmoy = mean(R)
  @show(θi)
  @show(θₛ)
  @show(n₁)
  @show(n₂)    
-    # drops must be deposited within the numerical domain
-    # withdraw mass if mass is negative (2*mass)
-    if mass < 0
-        hw = 2 * mass / (L^2 * aspect_ratio)
-    else
+  ### # drops must be deposited within the numerical domain
+  ###  # withdraw mass if mass is negative (2*mass)
+    # No involvement of Mass in the lubrification formulation
+#     if mass < 0
+# #         hw = 2 * mass / (L^2 * aspect_ratio)
+#     else
         hw = 0
-    end
+#     end
 
     if ndrops == 1
 #         h = sum(drop.(R, 0, 0, θₛ, Ref(x), Ref(y))) .+ hi .+ hw
-        h = sum(dropbis.(Rs, 0, 0, θi, Ref(x), Ref(y))) .+ hi .+ hw
-#         dropbis(Rs, x₀, y₀, θ, x, y) = (r = @.(√((x - x₀)^2 + (y - y₀)'^2));
+        h = sum(dropbis.(R,Rs, 0, 0, θi, Ref(x), Ref(y))) .+ hi .+ hw
 
 
     else
@@ -379,11 +373,11 @@ function DropletSpreadingExperiment(
         end
         h =
 #             sum(drop.(R, rand(d_posx, ndrops), rand(d_posy, ndrops), θₛ, Ref(x), Ref(y))) .+
-            sum(dropbis.(Rs, rand(d_posx, ndrops), rand(d_posy, ndrops), θi, Ref(x), Ref(y))) .+
+            sum(dropbis.(R,Rs, rand(d_posx, ndrops), rand(d_posy, ndrops), θi, Ref(x), Ref(y))) .+
             hi .+ hw
     end
     if smooth > 0
-        h = imfilter(h, Kernel.gaussian(smooth))
+         h = imfilter(h, Kernel.gaussian(smooth))
     end
     U₀, hyp!, cap!, unpack, grid, caches = init_model(x, y, h, p)
     return DropletSpreadingExperiment(U₀, p, grid, hyp!, cap!, unpack, caches)

@@ -7,7 +7,7 @@ global_logger(TerminalLogger())
 
 # %%
 p = Dict(
-    :tmax => 10,
+    :tmax => 200,
     :hₛ_ratio => 1.0,
     :hₛ => 1e-2,
     :ndrops => 1,
@@ -15,11 +15,11 @@ p = Dict(
     :h₀ => 0.001,
     :μ => 0.001,
     :σ => 0.068,
-    :θₛ => 15,
+    :θₛ => 30,
     :dθₛ => 0,
     :save_timestep => 0.3,
     :θτ => 0.0,
-    :mass => 22,
+    :mass => 1,
     :aspect_ratio => 1,
     :ρ => 1000.0,
     :τ => 1.0,
@@ -36,7 +36,7 @@ mass, ndrops, hdrop_std, two_dim = p
 experiment = DropletSpreadingExperiment(;
     h₀, σ, ρ, μ, τ, θτ, L, hₛ_ratio, hₛ, θₐ, θᵣ,
     aspect_ratio, mass, ndrops, hdrop_std, two_dim, smooth=false,
-    θₛ=deg2rad(15.0), θi=deg2rad(30.0), Rs=5.0
+    θₛ=deg2rad(θₛ), θi=deg2rad(15.0), Rs=5.0
 )
 
 # %%
