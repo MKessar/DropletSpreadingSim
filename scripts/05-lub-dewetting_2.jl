@@ -15,7 +15,7 @@ p = Dict(
     :h₀ => 0.001,
     :μ => 0.001,
     :σ => 0.068,
-    :θₛ => 30,
+    :θₛ => 45.0,
     :dθₛ => 0,
     :save_timestep => 0.3,
     :θτ => 0.0,
@@ -36,7 +36,7 @@ mass, ndrops, hdrop_std, two_dim = p
 experiment = DropletSpreadingExperiment(;
     h₀, σ, ρ, μ, τ, θτ, L, hₛ_ratio, hₛ, θₐ, θᵣ,
     aspect_ratio, mass, ndrops, hdrop_std, two_dim, smooth=false,
-    θₛ=deg2rad(θₛ), θi=deg2rad(15.0), Rs=5.00
+    θₛ=deg2rad(θₛ), θi=deg2rad(15.0), Rs=5.0
 )
 
 # %%
@@ -67,7 +67,7 @@ prob = ODEProblem(experiment, (0.0, p[:tmax]))
 # display(fig)
 
 save_cb = build_save_callback(
-    "data/lub_dewetting/thetaS_30.nc", prob, experiment;
+    "data/lub_dewetting/dewetting_thetaS_45.nc", prob, experiment;
     saveat=get(p, :save_timestep, nothing), attrib=p
 )
 

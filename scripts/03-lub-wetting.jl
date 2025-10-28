@@ -7,7 +7,7 @@ global_logger(TerminalLogger())
 
 # %%
 p = Dict(
-    :tmax => 10,
+    :tmax => 200,
     :hₛ_ratio => 1.0,
     :hₛ => 1e-2,
     :ndrops => 1,
@@ -67,7 +67,7 @@ prob = ODEProblem(experiment, (0.0, p[:tmax]))
 # display(fig)
 
 save_cb = build_save_callback(
-    "data/lub_wetting/lub_03.nc", prob, experiment;
+    "data/lub_wetting/lub_thetaS_15.nc", prob, experiment;
     saveat=get(p, :save_timestep, nothing), attrib=p
 )
 
