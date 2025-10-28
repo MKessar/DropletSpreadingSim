@@ -11,10 +11,11 @@ function do_simulate(p; filename)
     mass, ndrops, hdrop_std, two_dim  = p
     θₐ = deg2rad(θₛ + dθₛ)
     θᵣ = deg2rad(θₛ - dθₛ)
-
+    θi=30
+    Rs=5.0
     # %%
     experiment = DropletSpreadingExperiment(; h₀, σ, ρ, μ, τ, θτ, L, hₛ_ratio, hₛ, θₐ, θᵣ,
-        aspect_ratio, mass, ndrops, hdrop_std, two_dim)
+        aspect_ratio, mass, ndrops, hdrop_std, two_dim,θₛ,θi,Rs)
 
     # %%
     prob = ODEProblem(experiment, (0.0, p[:tmax]))

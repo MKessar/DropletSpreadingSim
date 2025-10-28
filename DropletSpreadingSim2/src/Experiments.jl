@@ -26,22 +26,22 @@ drop(R₀, θ, r) = @. max(sqrt(max(R₀^2 / sin(θ)^2 - r^2, 0)) - R₀ / tan(�
 drop(R₀, x₀, y₀, θ, x, y) = (r = @.(√((x - x₀)^2 + (y - y₀)'^2));
 drop(R₀, θ, r))
 
-dropbis(R₀, θ, r) = @. max(sqrt(max(5.0^2 / sin(θ)^2 - r^2, 0)) - 5.0 / tan(θ), 0)
-dropbis(R₀, x₀, y₀, θ, x, y) = (r = @.(√((x - x₀)^2 + (y - y₀)'^2));
-dropbis(R₀, θ, r))
-
+dropbis(Rs, θ, r) = @. max(sqrt(max(Rs^2 / sin(θ)^2 - r^2, 0)) - Rs / tan(θ), 0)
+dropbis(Rs, x₀, y₀, θ, x, y) = (r = @.(√((x - x₀)^2 + (y - y₀)'^2));
+dropbis(Rs, θ, r))
+#This is the formulation form Nicollas celier's parpaer (JMF 2023)
 function vdrop(Rθ, θ)
     R = Rθ / sin(θ)
     h = R * (1 - cos(θ))
     vdrop = π * h^2 * (R - h / 3)
     return vdrop
 end
-
+#This is the formulation form Roberta's paper (JMF 2023)
 function vdropbis(Rθ, θ)
     R = Rθ / sin(θ)
 #    h = R * (1 - cos(θ))
-    vdrop = 0.5*(R)^2*(2*θ -sin(2*θ)) 
-    return vdrop
+    vdropbis = 0.5*(R)^2*(2*θ -sin(2*θ)) 
+    return vdropbis
 end
 
 struct DropletSpreadingExperiment
@@ -276,7 +276,10 @@ function DropletSpreadingExperiment(
     two_dim=true,
     holdup=0.02,
     mass=nothing,
-    smooth=false
+    smooth=false,
+    θₛ=0.0,
+    θi=0.0,
+    Rs=5.0
 )
     if L < 2h₀
         error("Domain length < 2h₀")
@@ -303,9 +306,9 @@ function DropletSpreadingExperiment(
 
 #    Re = u₀ * h₀ / ν
     κ = σ / (ρ * h₀ * u₀^2)
-    Re = 1.0/ κ # = 1 / Re
+    Re = 1.0/ κ 
     
-    β = 10000.0 #(3π)^2 / 4
+    β = 10000.0 
     @show(τ)
     @show(Re)
     @show(β)
@@ -337,18 +340,18 @@ function DropletSpreadingExperiment(
         hi = hₛ
     end
     # random distribution of drops with a total mass equal to mass
-    θₛ = 0.5 * (θₐ + θᵣ)
-    θi = 2.0 * θₛ
+#     θₛ = 0.5 * (θₐ + θᵣ)
+#     θi = 2.0 * θₛ
     xmin, xmax = extrema(x)
     ymin, ymax = extrema(y)
-    d_R = Normal(1.0, hdrop_std)
-    R = rand(d_R, ndrops)
+#     d_R = Normal(1.0, hdrop_std)
+#     R = rand(d_R, ndrops)
 #     voldrop = vdrop.(R, θₛ)
-    voldrop = vdropbis.(R, θi)
-    vol = sum(voldrop)
+#     voldrop = vdropbis.(R, θi)
+#     vol = sum(voldrop)
 
-    R = R * (ρ)^(1 / 3)
-    Rmoy = mean(R)
+#     R = R * (ρ)^(1 / 3)
+#     Rmoy = mean(R)
  @show(θi)
  @show(θₛ)
  @show(n₁)
@@ -363,7 +366,9 @@ function DropletSpreadingExperiment(
 
     if ndrops == 1
 #         h = sum(drop.(R, 0, 0, θₛ, Ref(x), Ref(y))) .+ hi .+ hw
-        h = sum(dropbis.(R, 0, 0, θi, Ref(x), Ref(y))) .+ hi .+ hw
+        h = sum(dropbis.(Rs, 0, 0, θi, Ref(x), Ref(y))) .+ hi .+ hw
+#         dropbis(Rs, x₀, y₀, θ, x, y) = (r = @.(√((x - x₀)^2 + (y - y₀)'^2));
+
 
     else
         d_posx = Uniform(xmin + Rmoy, xmax - Rmoy)
@@ -373,7 +378,8 @@ function DropletSpreadingExperiment(
             d_posy = 0
         end
         h =
-            sum(drop.(R, rand(d_posx, ndrops), rand(d_posy, ndrops), θₛ, Ref(x), Ref(y))) .+
+#             sum(drop.(R, rand(d_posx, ndrops), rand(d_posy, ndrops), θₛ, Ref(x), Ref(y))) .+
+            sum(dropbis.(Rs, rand(d_posx, ndrops), rand(d_posy, ndrops), θi, Ref(x), Ref(y))) .+
             hi .+ hw
     end
     if smooth > 0
